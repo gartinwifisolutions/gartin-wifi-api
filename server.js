@@ -22,15 +22,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// Admin authentication middleware
-const authenticateAdmin = (req, res, next) => {
-    const apiKey = req.headers['x-api-key'];
-    if (apiKey !== process.env.ADMIN_API_KEY) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    next();
-};
-
 // MongoDB connection with retry logic
 const connectDB = async () => {
     const maxRetries = 3;
@@ -84,7 +75,7 @@ const reviewSchema = new mongoose.Schema({
     },
     approved: { 
         type: Boolean, 
-        default: false 
+        default: true 
     }
 });
 
@@ -93,7 +84,7 @@ const Review = mongoose.model('Review', reviewSchema);
 // Public Routes
 app.get('/api/reviews', async (req, res) => {
     try {
-        const reviews = await Review.find({ approved: true })
+        const reviews = await Review.find()
             .sort({ date: -1 })
             .select('-__v')
             .lean();
@@ -120,7 +111,8 @@ app.post('/api/reviews', async (req, res) => {
         const newReview = new Review({
             name: name.trim(),
             rating,
-            review: review.trim()
+            review: review.trim(),
+            approved: true 
         });
 
         await newReview.save();
@@ -128,46 +120,6 @@ app.post('/api/reviews', async (req, res) => {
     } catch (err) {
         console.error('Error submitting review:', err);
         res.status(400).json({ error: 'Error submitting review' });
-    }
-});
-
-// Admin Routes (protected)
-app.get('/api/admin/reviews', authenticateAdmin, async (req, res) => {
-    try {
-        const reviews = await Review.find()
-            .sort({ date: -1 })
-            .select('-__v')
-            .lean();
-        res.json(reviews);
-    } catch (err) {
-        console.error('Error fetching admin reviews:', err);
-        res.status(500).json({ error: 'Error fetching reviews' });
-    }
-});
-
-app.patch('/api/admin/reviews/:id', authenticateAdmin, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { approved } = req.body;
-
-        if (typeof approved !== 'boolean') {
-            return res.status(400).json({ error: 'Invalid approval status' });
-        }
-
-        const review = await Review.findByIdAndUpdate(
-            id,
-            { approved },
-            { new: true, runValidators: true }
-        ).select('-__v');
-
-        if (!review) {
-            return res.status(404).json({ error: 'Review not found' });
-        }
-
-        res.json(review);
-    } catch (err) {
-        console.error('Error updating review:', err);
-        res.status(400).json({ error: 'Error updating review' });
     }
 });
 
