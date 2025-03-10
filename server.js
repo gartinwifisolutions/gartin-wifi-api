@@ -8,7 +8,7 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-    origin: ['https://gartinwifisolutions.com', 'http://localhost:3000'],
+    origin: ['https://gartinwifisolutions.com', 'http://localhost:8080', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PATCH'],
     credentials: true
 }));
