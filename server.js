@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors({
     origin: ['https://gartinwifisolutions.com', 'http://localhost:8080', 'http://localhost:3000'],
-    methods: ['GET', 'POST', 'PATCH'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
     credentials: true
 }));
 app.use(express.json());
@@ -81,6 +81,15 @@ const reviewSchema = new mongoose.Schema({
 
 const Review = mongoose.model('Review', reviewSchema);
 
+// Admin authentication middleware
+const authenticateAdmin = (req, res, next) => {
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey !== process.env.ADMIN_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+};
+
 // Public Routes
 app.get('/api/reviews', async (req, res) => {
     try {
@@ -120,6 +129,23 @@ app.post('/api/reviews', async (req, res) => {
     } catch (err) {
         console.error('Error submitting review:', err);
         res.status(400).json({ error: 'Error submitting review' });
+    }
+});
+
+// Delete review (protected)
+app.delete('/api/reviews/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const review = await Review.findByIdAndDelete(id);
+        
+        if (!review) {
+            return res.status(404).json({ error: 'Review not found' });
+        }
+        
+        res.json({ message: 'Review deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting review:', err);
+        res.status(400).json({ error: 'Error deleting review' });
     }
 });
 
